@@ -1,12 +1,12 @@
 # LCD-1602
-Tutorial para utilização do controlador LCD HD44780 com mBed e Keil uVision
+Tutorial para utilização do controlador LCD HD44780 com mBed e Keil uVision.
 
 # Objetivo
-Ensinar a importar a biblioteca em ambos compiladores (Keil uVision e mBed), e então escrever caracteres alfanuméricos no display de cristal líquido (LCD HD44780)
+Ensinar a importar a biblioteca em ambos compiladores (Keil uVision e mBed), e então escrever caracteres alfanuméricos no display de cristal líquido (LCD HD44780).
 
 # Importação - mBed
 Há duas maneiras de importar no mBed:
-* Importando o código disponível no repositório do mBed neste link [link](https://os.mbed.com/users/Marcelocostanzo/code/LCD_1602/)
+* Importando o código disponível no repositório do mBed neste [link](https://os.mbed.com/users/Marcelocostanzo/code/LCD_1602/)
 * Dentro de seu projeto, criar 2 arquivos com a mesma estrutura presente na pasta "mbed-> biblioteca" deste repositório
 
 # Importação - Keil
