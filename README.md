@@ -15,21 +15,21 @@ Abra o projeto no Keil, na arvore do projeto clique direito com o mouse na pasta
 
 # Programando
 Para utilizar a biblioteca devemos incluir ela em nosso arquivo principal, o main. Para isso devemos escrever #include "LCD_1602.h", com isso o código já estará apto a utilizar as funções da biblioteca. As funções são as seguintes:
- ## void lcd_init (void)
+ * void lcd_init (void)
     Inicializa o display, enviando uma sequência de dados necessários
- ## void lcd_send_cmd (char cmd)
+ * void lcd_send_cmd (char cmd)
     Envia comandos ao display, não usaremos essa função em nosso código principal, ela é utilizada internamente pela biblioteca
- ## void lcd_send_char (char data)
+ * void lcd_send_char (char data)
     Escreve um único caracter no display
- ## void lcd_send_string (char *str)
+ * void lcd_send_string (char *str)
     Escreve uma string no display (ou um vetor de caracteres)  
  
- ## void lcd_put_cur(int row, int col)
+ * void lcd_put_cur(int row, int col)
     Seleciona a posição do cursor em linha, coluna
- ## void lcd_clear (void)  
+ * void lcd_clear (void)  
     Limpa o display
     
- ## void lcd_cursor_mode(char cursor, char blink)
+ * void lcd_cursor_mode(char cursor, char blink)
     Configura o modo do cursor. O primeiro parâmetro exibe ou não o cursor (0 sem cursor, 1 com cursor), o segundo parâmetro piscará ou não o cursor (0 não piscante, 1 piscante)
  
  
