@@ -5,8 +5,9 @@
 RCC_ClocksTypeDef ClksFreq;
 
 void Delay(__IO uint32_t nCount);
-void NMI_Handler(void);
+//void NMI_Handler(void);
 void SetClk(uint32_t PLLMul);
+void SetClk_Internal(uint32_t PLLMul);
 
 int i;
 char strBuffer[64];
@@ -14,7 +15,10 @@ char strBuffer[64];
 int main()
 {
 	//==================System Clock Init==================
-	SetClk(2);
+	//SetClk(2);
+	SetClk_Internal(4);
+	
+	GPIO_WriteBit(LCD_BK_GPIO_Port, LCD_BK_Pin, Bit_SET);
 	
 	lcd_init();
 	lcd_clear();
@@ -40,36 +44,41 @@ int main()
     sprintf(strBuffer, "%i", i);
     lcd_send_string(strBuffer);
     i++;
-		Delay(1000);
-		
+		GPIO_WriteBit(GPIOA, GPIO_Pin_5, Bit_SET);
+		GPIO_WriteBit(LCD_BK_GPIO_Port, LCD_BK_Pin, Bit_SET);
+		Delay(500);
+		GPIO_WriteBit(GPIOA, GPIO_Pin_5, Bit_RESET);
+		GPIO_WriteBit(LCD_BK_GPIO_Port, LCD_BK_Pin, Bit_RESET);
+		Delay(500);
 	}
 }
 
-void NMI_Handler()
+//void NMI_Handler()
+//{
+//	//Clear CSS interrupt flag
+//	RCC->CIR |= RCC_CIR_CSSC;
+//	//Wait couple of time, if it recovers
+//	//feasible to restart again
+//	Delay(100);
+//	//Try to start HSE
+//	RCC_HSEConfig(RCC_HSE_ON);
+//	//Delay to start crystal
+//	Delay(1);
+//	if (RCC_WaitForHSEStartUp() == SUCCESS)
+//	{
+//		//If starts - set HSE as system clock source
+//		RCC_SYSCLKConfig(RCC_SYSCLKSource_HSE);
+//		//Stop HSI
+//		RCC_HSICmd(DISABLE);
+//	}
+//	else GPIO_ResetBits(GPIOB, GPIO_Pin_8);
+//	//If crystal does not started - stay on HSI
+//	//Light up LED on GPIO_Pin_8
+//}
+
+
+void SetClk(uint32_t PLLMul) 
 {
-	//Clear CSS interrupt flag
-	RCC->CIR |= RCC_CIR_CSSC;
-	//Wait couple of time, if it recovers
-	//feasible to restart again
-	Delay(100);
-	//Try to start HSE
-	RCC_HSEConfig(RCC_HSE_ON);
-	//Delay to start crystal
-	Delay(1);
-	if (RCC_WaitForHSEStartUp() == SUCCESS)
-	{
-		//If starts - set HSE as system clock source
-		RCC_SYSCLKConfig(RCC_SYSCLKSource_HSE);
-		//Stop HSI
-		RCC_HSICmd(DISABLE);
-	}
-	else GPIO_ResetBits(GPIOB, GPIO_Pin_8);
-	//If crystal does not started - stay on HSI
-	//Light up LED on GPIO_Pin_8
-}
-
-
-void SetClk(uint32_t PLLMul) {
       RCC_DeInit();
 	  //Run HSE
 	  RCC_HSEConfig(RCC_HSE_ON);
@@ -103,6 +112,35 @@ void SetClk(uint32_t PLLMul) {
       RCC_GetClocksFreq(&ClksFreq); // update SYSCLK, HCLK, PCLK1 and PCLK2 in ClksFreq
 }
 
+void SetClk_Internal(uint32_t PLLMul)
+{
+    RCC_DeInit();
+	  RCC_HSEConfig(RCC_HSE_OFF);
+		
+	RCC->CR |= RCC_CR_CSSON;
+	
+  RCC_HSICmd(ENABLE);
+
+    // PLL provides frequency multiplier of (HSI/2) i.e. 4MHz x ...
+    RCC_PLLConfig(RCC_PLLSource_HSI_Div2, PLLMul);
+    // Enable PLL
+    RCC_PLLCmd(ENABLE);
+    // Wait till PLL is ready
+    while (RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET);
+    // Select PLL as system clock source
+    RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
+    // Wait till PLL is used as system clock source
+    while (RCC_GetSYSCLKSource() != 0x08);
+    // AHB, AP2 and AP1 clock are necessary for the peripherals to function
+    // HCLK for AHB = SYSCLK (max is SYSCLK, up to 72MHz)
+    RCC_HCLKConfig(RCC_SYSCLK_Div1);
+    // PCLK2 for APB2 = HCLK (max is SYSCLK, up to 72MHz)
+    RCC_PCLK2Config(RCC_HCLK_Div1);
+    // PCLK1 for APB1 = HCLK (HCLK <= 36MHz)
+    RCC_PCLK1Config(RCC_HCLK_Div1);
+
+    RCC_GetClocksFreq(&ClksFreq); // update SYSCLK, HCLK, PCLK1 and PCLK2 in ClksFreq
+}
 
 //Dumbest delay function
 void Delay(__IO uint32_t nCount)
