@@ -2,28 +2,46 @@
 #include "lcd_1602_spl.h"
 #include "stdio.h"
 
-RCC_ClocksTypeDef ClksFreq;
+//prototipo das funcoes
+void mDelay(uint32_t Delay);
+void SetClk_Internal(void);
 
-void Delay(__IO uint32_t nCount);
-//void NMI_Handler(void);
-void SetClk(uint32_t PLLMul);
-void SetClk_Internal(uint32_t PLLMul);
-
+//variaveis globais
 int i;
 char strBuffer[64];
 
+
 int main()
 {
-	//==================System Clock Init==================
-	//SetClk(2);
-	SetClk_Internal(4);
+	//habilita o APB2
+	__IO uint32_t tmpreg;
+  SET_BIT(RCC->APB2ENR, RCC_APB2ENR_AFIOEN);
+  tmpreg = READ_BIT(RCC->APB2ENR, RCC_APB2ENR_AFIOEN);
+  (void)tmpreg;
 	
-	GPIO_WriteBit(LCD_BK_GPIO_Port, LCD_BK_Pin, Bit_SET);
+	//habilita o APB1
+  SET_BIT(RCC->APB1ENR, RCC_APB1ENR_PWREN);
+  /* Delay after an RCC peripheral clock enabling */
+  tmpreg = READ_BIT(RCC->APB1ENR, RCC_APB1ENR_PWREN);
+  (void)tmpreg;
 	
+	//desabilita a interface jtag
+	CLEAR_BIT(AFIO->MAPR,AFIO_MAPR_SWJ_CFG);
+  SET_BIT(AFIO->MAPR, AFIO_MAPR_SWJ_CFG_DISABLE);
+	
+	//configura o NVIC (vetor de interrupcoes)
+	NVIC_SetPriorityGrouping(((uint32_t)0x00000003));
+	
+	//configura o clock do uC
+	SetClk_Internal();
+	
+	//habilita o LCD
 	lcd_init();
+	lcd_back_light(1);
 	lcd_clear();
 	lcd_cursor_mode(0,0);
 			
+	//escreve caracter por caracter
 	lcd_send_char(0x4F);//O
 	lcd_send_char(0x4C);//L
 	lcd_send_char(0x41);//A
@@ -31,127 +49,89 @@ int main()
 	lcd_send_char(0x32);//2
 	lcd_send_char(0x30);//0
 	lcd_send_char(0x32);//2
-	lcd_send_char(0x30);//0
+	lcd_send_char(0x31);//1
 	
-	Delay(1000);
+	//espera 2 segundos
+	mDelay(2000);
 	
+	//limpa o LCD
 	lcd_clear();
 
 	
 	while(1)
 	{
-		lcd_put_cur(0,0);
-    sprintf(strBuffer, "%i", i);
-    lcd_send_string(strBuffer);
-    i++;
-		GPIO_WriteBit(GPIOA, GPIO_Pin_5, Bit_SET);
-		GPIO_WriteBit(LCD_BK_GPIO_Port, LCD_BK_Pin, Bit_SET);
-		Delay(500);
-		GPIO_WriteBit(GPIOA, GPIO_Pin_5, Bit_RESET);
-		GPIO_WriteBit(LCD_BK_GPIO_Port, LCD_BK_Pin, Bit_RESET);
-		Delay(500);
-	}
-}
-
-//void NMI_Handler()
-//{
-//	//Clear CSS interrupt flag
-//	RCC->CIR |= RCC_CIR_CSSC;
-//	//Wait couple of time, if it recovers
-//	//feasible to restart again
-//	Delay(100);
-//	//Try to start HSE
-//	RCC_HSEConfig(RCC_HSE_ON);
-//	//Delay to start crystal
-//	Delay(1);
-//	if (RCC_WaitForHSEStartUp() == SUCCESS)
-//	{
-//		//If starts - set HSE as system clock source
-//		RCC_SYSCLKConfig(RCC_SYSCLKSource_HSE);
-//		//Stop HSI
-//		RCC_HSICmd(DISABLE);
-//	}
-//	else GPIO_ResetBits(GPIOB, GPIO_Pin_8);
-//	//If crystal does not started - stay on HSI
-//	//Light up LED on GPIO_Pin_8
-//}
-
-
-void SetClk(uint32_t PLLMul) 
-{
-      RCC_DeInit();
-	  //Run HSE
-	  RCC_HSEConfig(RCC_HSE_ON);
-	  //Wait until HSE starts up
-	  while(RCC_WaitForHSEStartUp() != SUCCESS);
-	  //Turn on Clock Security System
-	  RCC->CR |= RCC_CR_CSSON;
-	  //Make HSE as system main clock source
-	  //RCC_SYSCLKConfig(RCC_SYSCLKSource_HSE);
-	  //Power off HSI to reduce energy
-	  RCC_HSICmd(DISABLE);
-
-      // PLL provides frequency multiplier of (HSI/2) i.e. 4MHz x ...
-      RCC_PLLConfig(RCC_PLLSource_HSE_Div2, PLLMul);
-      // Enable PLL
-      RCC_PLLCmd(ENABLE);
-      // Wait till PLL is ready
-      while (RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET);
-      // Select PLL as system clock source
-      RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
-      // Wait till PLL is used as system clock source
-      while (RCC_GetSYSCLKSource() != 0x08);
-      // AHB, AP2 and AP1 clock are necessary for the peripherals to function
-      // HCLK for AHB = SYSCLK (max is SYSCLK, up to 72MHz)
-      RCC_HCLKConfig(RCC_SYSCLK_Div1);
-      // PCLK2 for APB2 = HCLK (max is SYSCLK, up to 72MHz)
-      RCC_PCLK2Config(RCC_HCLK_Div1);
-      // PCLK1 for APB1 = HCLK (HCLK <= 36MHz)
-      RCC_PCLK1Config(RCC_HCLK_Div1);
-
-      RCC_GetClocksFreq(&ClksFreq); // update SYSCLK, HCLK, PCLK1 and PCLK2 in ClksFreq
-}
-
-void SetClk_Internal(uint32_t PLLMul)
-{
-    RCC_DeInit();
-	  RCC_HSEConfig(RCC_HSE_OFF);
+		lcd_put_cur(0,0); 												 	 //posiciona o cursor
+    sprintf(strBuffer, "Contador: %i", i);		 	 //monta a string
+    lcd_send_string(strBuffer);									 //escreve a string no LCD
+    i++;																				 //incrementa o valor do contador
 		
-	RCC->CR |= RCC_CR_CSSON;
-	
-  RCC_HSICmd(ENABLE);
-
-    // PLL provides frequency multiplier of (HSI/2) i.e. 4MHz x ...
-    RCC_PLLConfig(RCC_PLLSource_HSI_Div2, PLLMul);
-    // Enable PLL
-    RCC_PLLCmd(ENABLE);
-    // Wait till PLL is ready
-    while (RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET);
-    // Select PLL as system clock source
-    RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
-    // Wait till PLL is used as system clock source
-    while (RCC_GetSYSCLKSource() != 0x08);
-    // AHB, AP2 and AP1 clock are necessary for the peripherals to function
-    // HCLK for AHB = SYSCLK (max is SYSCLK, up to 72MHz)
-    RCC_HCLKConfig(RCC_SYSCLK_Div1);
-    // PCLK2 for APB2 = HCLK (max is SYSCLK, up to 72MHz)
-    RCC_PCLK2Config(RCC_HCLK_Div1);
-    // PCLK1 for APB1 = HCLK (HCLK <= 36MHz)
-    RCC_PCLK1Config(RCC_HCLK_Div1);
-
-    RCC_GetClocksFreq(&ClksFreq); // update SYSCLK, HCLK, PCLK1 and PCLK2 in ClksFreq
+		GPIO_WriteBit(GPIOA, GPIO_Pin_5, Bit_SET);   //acende o led da placa NUCLEO
+		mDelay(500);																 //espera meio segundo
+		
+		GPIO_WriteBit(GPIOA, GPIO_Pin_5, Bit_RESET); //apaga o led da placa NUCLEO
+		mDelay(500);																 //espera meio segundo
+	}
 }
 
-//Dumbest delay function
-void Delay(__IO uint32_t nCount)
+
+
+void SetClk_Internal()
 {
-	uint32_t i = 0;
-	for (; nCount != 0; i++)
-	{
-		if (i == 1000)
-		{
-			i = 0;
-			nCount--;
-		}
-	}
+	//configura a latencia do clock
+	MODIFY_REG(FLASH->ACR, FLASH_ACR_LATENCY, (0x2UL << (0U)));
+	while(((uint32_t)(READ_BIT(FLASH->ACR, FLASH_ACR_LATENCY))) != (0x2UL << (0U)));
+	
+	//calibra o cristal interno
+	RCC_AdjustHSICalibrationValue(16);
+	
+	//liga o cristal interno e espera estabilisar
+	RCC_HSICmd(ENABLE);
+	while (RCC_GetFlagStatus(RCC_FLAG_HSIRDY) == RESET);
+	
+	//liga a PLL para o cirstal interno e espera estabilisar
+	RCC_PLLConfig(RCC_PLLSource_HSI_Div2, 16);
+	RCC_PLLCmd(ENABLE);
+	while (RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET);
+	
+	//configura os prescaler's
+	RCC_HCLKConfig(RCC_SYSCLK_Div1);
+	RCC_PCLK2Config(RCC_HCLK_Div1);
+	RCC_PCLK1Config(RCC_HCLK_Div2);
+	
+	//configura o clock do sistema e espera a confirmacao de configuracao
+	RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
+	while (RCC_GetSYSCLKSource() != 0x08);
+	
+	
+	//configura o systick para base de 1ms
+  SysTick->LOAD  = (uint32_t)((64000000 / 1000U) - 1UL);  /* set reload register */
+  SysTick->VAL   = 0UL;                                       /* Load the SysTick Counter Value */
+  SysTick->CTRL  = SysTick_CTRL_CLKSOURCE_Msk |
+                   SysTick_CTRL_ENABLE_Msk;                   /* Enable the Systick Timer */
+									 
+	//informa o clock do sistema em 64Mhz							 
+	SystemCoreClock = 64000000;	
+}
+
+
+//rotina de delay em milissegundos
+void mDelay(uint32_t Delay)
+{
+  __IO uint32_t  tmp = SysTick->CTRL;  /* Clear the COUNTFLAG first */
+  /* Add this code to indicate that local variable is not used */
+  ((void)tmp);
+
+  /* Add a period to guaranty minimum wait */
+  if (Delay < 0xFFFFFFFFU)
+  {
+    Delay++;
+  }
+
+  while (Delay)
+  {
+    if ((SysTick->CTRL & SysTick_CTRL_COUNTFLAG_Msk) != 0U)
+    {
+      Delay--;
+    }
+  }
 }

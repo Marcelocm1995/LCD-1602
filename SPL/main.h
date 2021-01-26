@@ -2,7 +2,8 @@
 #include "stm32f10x_gpio.h"
 #include "stm32f10x.h"
 
-extern void Delay(__IO uint32_t nCount);
+//extern void Delay(__IO uint32_t nCount);
+extern void mDelay(uint32_t Delay);
 
 #define LCD_D4_Pin GPIO_Pin_5
 #define LCD_D4_GPIO_Port GPIOB

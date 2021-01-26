@@ -1,5 +1,11 @@
 #include "lcd_1602_spl.h"
 
+
+void lcd_back_light(int state)
+{
+	GPIO_WriteBit(LCD_BK_GPIO_Port, LCD_BK_Pin, state);
+}
+
 void send_to_lcd (char data, int rs)
 {
 	GPIO_WriteBit(LCD_RS_GPIO_Port, LCD_RS_Pin, rs);  // rs = 1 for data, rs=0 for command
@@ -11,13 +17,13 @@ void send_to_lcd (char data, int rs)
 	GPIO_WriteBit(LCD_D4_GPIO_Port, LCD_D4_Pin, ((data>>0)&0x01));
 
 	/* Toggle EN PIN to send the data
-	 * if the HCLK > 100 MHz, use the  20 us delay
-	 * if the LCD still doesn't work, increase the delay to 50, 80 or 100..
+	 * if the HCLK > 100 MHz, use the  20 us mDelay
+	 * if the LCD still doesn't work, increase the mDelay to 50, 80 or 100..
 	 */
 	GPIO_WriteBit(LCD_EN_GPIO_Port, LCD_EN_Pin, 1);
-	Delay(1);
+	mDelay(1);
 	GPIO_WriteBit(LCD_EN_GPIO_Port, LCD_EN_Pin, 0);
-	Delay(1);
+	mDelay(1);
 }
 
 void lcd_cursor_mode(char cursor, char blink)
@@ -72,7 +78,7 @@ void lcd_send_char (char data)
 void lcd_clear (void)
 {
 	lcd_send_cmd(0x01);
-	Delay(2);
+	mDelay(2);
 }
 
 void lcd_put_cur(int row, int col)
@@ -97,7 +103,7 @@ void lcd_init (void)
 	//Allow clock to GPIOA
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
 	//Configure pins
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8|GPIO_Pin_9;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5|GPIO_Pin_8|GPIO_Pin_9;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
@@ -120,30 +126,30 @@ void lcd_init (void)
 
 	
 	// 4 bit initialisation
-	Delay(50);  // wait for >40ms
+	mDelay(50);  // wait for >40ms
 	lcd_send_cmd (0x00);
-	Delay(5);  // wait for >4.1ms
+	mDelay(5);  // wait for >4.1ms
 	lcd_send_cmd (0x03);
-	Delay(1);  // wait for >100us
+	mDelay(1);  // wait for >100us
 	lcd_send_cmd (0x03);
-	Delay(10);
+	mDelay(10);
 	lcd_send_cmd (0x03);  // 4bit mode
-	Delay(10);
+	mDelay(10);
 
   // dislay initialisation
 	lcd_send_cmd (0x02); // Function set --> DL=0 (4 bit mode), N = 1 (2 line display) F = 0 (5x8 characters)
-	Delay(1);
+	mDelay(1);
 	lcd_send_cmd (0x02); //Display on/off control --> D=0,C=0, B=0  ---> display off
-	Delay(1);
+	mDelay(1);
 	lcd_send_cmd (0x08);  // clear display
-	Delay(1);
-	Delay(1);
+	mDelay(1);
+	mDelay(1);
 	lcd_send_cmd (0x00); //Entry mode set --> I/D = 1 (increment cursor) & S = 0 (no shift)
-	Delay(1);
+	mDelay(1);
 	lcd_send_cmd (0x0C); //Display on/off control --> D = 1, C and B = 0. (Cursor and blink, last two bits)
-	Delay(1);
+	mDelay(1);
 	lcd_send_cmd (0x00); 
-	Delay(1);
+	mDelay(1);
 	lcd_send_cmd (0x06);
 }
 
